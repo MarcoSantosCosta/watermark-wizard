@@ -12,14 +12,12 @@ let isResizing = false;
 let offsetX, offsetY;
 
 const defaultWatermarkSizeRatio = 0.4;
-const resizeHandleSize = 10;
-
+const resizeHandleSize = 10
 watermarkImage.src = watermarkBase64;
 
 watermarkImage.onload = () => {
   console.log("Watermark loaded successfully");
 };
-
 function isInResizeHandle(x, y) {
   return (
     x >= xPosition + watermarkWidth - resizeHandleSize &&
@@ -28,7 +26,6 @@ function isInResizeHandle(x, y) {
     y <= yPosition + watermarkHeight
   );
 }
-
 function isInWatermark(x, y) {
   return x >= xPosition && x <= xPosition + watermarkWidth && y >= yPosition && y <= yPosition + watermarkHeight;
 }
@@ -48,7 +45,6 @@ imageUpload.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
   }
 });
-
 function initializeCanvas() {
   canvas.width = uploadedImage.width;
   canvas.height = uploadedImage.height;
@@ -63,11 +59,10 @@ function initializeCanvas() {
 }
 
 function drawCanvas() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
   ctx.drawImage(watermarkImage, xPosition, yPosition, watermarkWidth, watermarkHeight);
-
 
   ctx.strokeStyle = 'red';
   ctx.lineWidth = 2;
@@ -80,63 +75,90 @@ function drawCanvas() {
 
   downloadBtn.style.display = 'block';
 }
-
 function drawWatermarkedImage() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
   ctx.drawImage(watermarkImage, xPosition, yPosition, watermarkWidth, watermarkHeight);
 }
+function getPointerPosition(e) {
+  let x, y;
+  if (e.touches) {
+    const touch = e.touches[0];
+    x = touch.clientX - canvas.getBoundingClientRect().left;
+    y = touch.clientY - canvas.getBoundingClientRect().top;
+  } else {
+    x = e.offsetX;
+    y = e.offsetY;
+  }
+  return { x, y };
+}
 
 canvas.addEventListener('mousedown', (e) => {
-  const mouseX = e.offsetX;
-  const mouseY = e.offsetY;
-
-  if (isInResizeHandle(mouseX, mouseY)) {
-    isResizing = true;
-  } else if (isInWatermark(mouseX, mouseY)) {
-    isDragging = true;
-    offsetX = mouseX - xPosition;
-    offsetY = mouseY - yPosition;
-  }
+  handlePointerDown(e);
+});
+canvas.addEventListener('touchstart', (e) => {
+  handlePointerDown(e);
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (isDragging) {
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
+  handlePointerMove(e);
+});
+canvas.addEventListener('touchmove', (e) => {
+  handlePointerMove(e);
+});
 
-    xPosition = mouseX - offsetX;
-    yPosition = mouseY - offsetY;
+canvas.addEventListener('mouseup', () => {
+  handlePointerUp();
+});
+canvas.addEventListener('touchend', () => {
+  handlePointerUp();
+});
+
+function handlePointerDown(e) {
+  e.preventDefault()
+  const { x, y } = getPointerPosition(e);
+
+  if (isInResizeHandle(x, y)) {
+    isResizing = true;
+  } else if (isInWatermark(x, y)) {
+    isDragging = true;
+    offsetX = x - xPosition;
+    offsetY = y - yPosition;
+  }
+}
+
+function handlePointerMove(e) {
+  if (!isDragging && !isResizing) return;
+  e.preventDefault();
+  const { x, y } = getPointerPosition(e);
+
+  if (isDragging) {
+
+    xPosition = x - offsetX;
+    yPosition = y - offsetY;
     drawCanvas();
   }
 
   if (isResizing) {
-    const mouseX = e.offsetX;
-    const mouseY = e.offsetY;
 
-    watermarkWidth = mouseX - xPosition;
+    watermarkWidth = x - xPosition;
     watermarkHeight = watermarkImage.height * (watermarkWidth / watermarkImage.width);
     drawCanvas();
   }
-});
+}
 
-canvas.addEventListener('mouseup', () => {
+function handlePointerUp() {
   isDragging = false;
   isResizing = false;
-});
-
+}
 downloadBtn.addEventListener('click', () => {
-
   drawWatermarkedImage();
-
 
   const link = document.createElement('a');
   link.download = 'watermarked-image.png';
   link.href = canvas.toDataURL();
   link.click();
-
 
   drawCanvas();
 });
